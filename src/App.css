@@ -1,0 +1,12 @@
+.primary-action-btn {
+  text-transform: none;
+  font-weight: 600;
+  border-radius: 8px;
+  box-shadow: none;
+  background-color: #667eea !important;
+}
+
+.primary-action-btn:hover {
+  background-color: #5568d3;
+}
+
