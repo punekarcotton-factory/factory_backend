@@ -362,17 +362,32 @@ const AdminAssignTailorStage = () => {
   }
 
   if (!memos.length) {
-    return <NoResponsePage />;
+    return (
+      <Box
+        sx={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <NoResponsePage />
+      </Box>
+    );
   }
 
   return (
     <>
-      <Box sx={{ minHeight: "100vh", pb: 4, mt: 3 }}>
+      <Box sx={{ minHeight: "100%", pb: 4, mt: 3 }}>
         <Container maxWidth={false} disableGutters sx={{ px: 3 }}>
           {/* Tabs */}
           <Paper
             elevation={0}
             sx={{
+              position: "sticky",
+              top: 0,
+              zIndex: 10,
+              backgroundColor: "#ffffff",
               mb: 1,
               borderBottom: "1px solid #e3e8ee",
             }}
@@ -467,9 +482,17 @@ const AdminAssignTailorStage = () => {
           {/* ✅ FIX: Wrapped in Grid container so cards lay out horizontally */}
           <Grid container spacing={3} sx={{ mt: 1 }}>
             {getCurrentMemos().length === 0 ? (
-              <Grid item xs={12}>
+              <Box
+                sx={{
+                  width: "100%",
+                  minHeight: "60vh",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 <NoResponsePage />
-              </Grid>
+              </Box>
             ) : (
               getCurrentMemos().map((memo) => {
                 const firstItem = memo.items?.[0];

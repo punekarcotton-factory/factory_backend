@@ -142,10 +142,13 @@ const GlobalSearch = () => {
           <Paper
             elevation={8}
             sx={{
-              position: "absolute",
-              top: "100%",
-              left: 0,
-              right: 0,
+              position: { xs: "fixed", sm: "absolute" },
+              top: { xs: "60px", sm: "100%" },
+              left: { xs: "50%", sm: "auto" },
+              right: { xs: "auto", sm: 0 },
+              transform: { xs: "translateX(-50%)", sm: "none" },
+              width: { xs: "calc(100vw - 32px)", sm: "350px", md: "100%" },
+              maxWidth: "400px",
               mt: 1,
               maxHeight: "400px",
               overflowY: "auto",

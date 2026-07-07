@@ -166,7 +166,7 @@ export default function Dashboard() {
   }
 
   return (
-    <Box sx={{ bgcolor: "#f9fafb", minHeight: "100vh", p: 2 }}>
+    <Box sx={{ bgcolor: "#f9fafb", minHeight: "100%", p: 2 }}>
       {/* Header with Link Button */}
       <Box
         sx={{
