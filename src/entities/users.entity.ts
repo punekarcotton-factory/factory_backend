@@ -49,6 +49,9 @@ export class UserEntity extends BaseEntity implements User {
   @Column({ nullable: true })
   deletedBy: string;
 
+  @Column({ nullable: true })
+  tailorIdentifierId: string;
+
   @Column()
   @CreateDateColumn()
   createdAt: Date;

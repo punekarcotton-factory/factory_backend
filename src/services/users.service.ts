@@ -109,6 +109,7 @@ class UserService {
       roleId: roleId,
       roleName: roleName,
       createdBy: userData.createdBy,
+      tailorIdentifierId: userData.tailorIdentifierId
     });
 
     // Remove password from response
@@ -120,25 +121,57 @@ class UserService {
   public async updateUser(userId: string, userData: UpdateUserDto): Promise<User> {
     if (isEmpty(userData)) throw new HttpException(400, 'userData is empty');
 
-    const user = await this.users.findOneBy({ _id: userId, isActive: true });
-    if (!user) throw new HttpException(404, "User doesn't exist or is deactivated");
+    const user = await this.users.findOneBy({
+      _id: userId,
+      isActive: true,
+    });
+
+    if (!user) {
+      throw new HttpException(404, "User doesn't exist or is deactivated");
+    }
 
     const updateData: Partial<UserEntity> = {};
 
     if (userData.email) {
-      const findUser: User = await this.users.findOneBy({ email: userData.email, isActive: true });
-      if (findUser && findUser._id != userId) throw new HttpException(409, `This email ${userData.email} already exists`);
+      const findUser = await this.users.findOneBy({
+        email: userData.email,
+        isActive: true,
+      });
+
+      if (findUser && findUser._id != userId) {
+        throw new HttpException(409, `This email ${userData.email} already exists`);
+      }
+
       updateData.email = userData.email;
     }
 
-    if (userData.firstName) updateData.firstName = userData.firstName;
-    if (userData.lastName) updateData.lastName = userData.lastName;
-    if (userData.phone) updateData.phone = userData.phone;
+    if (userData.firstName) {
+      updateData.firstName = userData.firstName;
+    }
+
+    if (userData.lastName) {
+      updateData.lastName = userData.lastName;
+    }
+
+    if (userData.phone) {
+      updateData.phone = userData.phone;
+    }
 
     if (userData.roleId || userData.roleName) {
-      const { roleId, roleName } = await this.resolveRole(userData.roleId, userData.roleName);
+      const { roleId, roleName } = await this.resolveRole(
+        userData.roleId,
+        userData.roleName,
+      );
+
       updateData.roleId = roleId;
       updateData.roleName = roleName;
+    }
+
+    // Update password if provided
+    if (userData.password) {
+      const hashedPassword = await this.authService.hashPassword(userData.password);
+
+      updateData.password = hashedPassword;
     }
 
     const updatedUser: User = await this.users
@@ -151,6 +184,7 @@ class UserService {
       .then(res => res.raw[0]);
 
     delete updatedUser.password;
+
     return updatedUser;
   }
 
@@ -364,11 +398,11 @@ class UserService {
     // 4. Log Reassignment History
     const stageHistoryRepo = DBDataSource.getRepository(DeliveryMemoStageHistoryEntity);
     const allMemos = [...preStitcherMemos.map(m => m._id)];
-    
+
     // Add memos from tailor and kanch reassignment if they weren't covered
     // (Existing logic updates memoRepo.update based on IDs, but we need to track which ones changed)
     // For simplicity, let's track the ones we specifically found as ongoing for the fromUser
-    
+
     const reassignMetadata = {
       reassignedFromId: fromUser._id,
       reassignedFromName: `${fromUser.firstName} ${fromUser.lastName}`,

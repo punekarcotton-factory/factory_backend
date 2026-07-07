@@ -10,6 +10,7 @@ export interface User {
   roleId?: string;
   role?: Roles;
   roleName?: string;
+  tailorIdentifierId?:string;
   isActive?: boolean;
   deletedAt?: Date;
   deletedBy?: string;
