@@ -98,7 +98,7 @@ const Layout = () => {
 
   return (
     <Box
-      sx={{ display: "flex", height: "100vh", backgroundColor: "#f9fafb", overflow: "hidden" }}
+      sx={{ display: "flex", minHeight: "100vh", backgroundColor: "#f9fafb" }}
     >
       <CssBaseline />
 
@@ -128,7 +128,7 @@ const Layout = () => {
           }}
         >
           {/* Left - Page Title */}
-          <Box sx={{ display: { xs: "none", sm: "block" } }}>
+          <Box>
             <Typography
               sx={{
                 fontSize: { xs: "18px", md: "20px" },
@@ -143,14 +143,7 @@ const Layout = () => {
 
           <Box sx={{ display: "flex", alignItems: "center", gap: "16px", flex: 1, justifyContent: "flex-end" }}>
             {/* Global Search */}
-            <Box 
-              sx={{ 
-                display: "block", 
-                mr: { xs: 0, md: 2 }, 
-                flex: { xs: 1, md: "initial" }, 
-                maxWidth: { xs: "100%", md: "350px" } 
-              }}
-            >
+            <Box sx={{ display: { xs: "none", md: "block" }, mr: 2 }}>
               <GlobalSearch />
             </Box>
 

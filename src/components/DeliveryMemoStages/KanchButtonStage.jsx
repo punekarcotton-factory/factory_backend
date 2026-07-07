@@ -246,10 +246,10 @@ const KanchButtonStage = () => {
         prevMemos.map((memo) =>
           memo._id === selectedMemoForCompletion._id
             ? {
-              ...memo,
-              kanchButtonStatus: "COMPLETED",
-              kanchButtonAssigned: false,
-            }
+                ...memo,
+                kanchButtonStatus: "COMPLETED",
+                kanchButtonAssigned: false,
+              }
             : memo,
         ),
       );
@@ -376,19 +376,12 @@ const KanchButtonStage = () => {
 
   return (
     <>
-      <Box sx={{ minHeight: "100%", pb: 4, mt: 3 }}>
+      <Box sx={{ minHeight: "100vh", pb: 4, mt: 3 }}>
         <Container maxWidth="xl">
           {/* Tabs */}
           <Paper
             elevation={0}
-            sx={{
-              position: "sticky",
-              top: 0,
-              zIndex: 10,
-              backgroundColor: "#ffffff",
-              mb: 1,
-              borderBottom: "1px solid #e3e8ee",
-            }}
+            sx={{ mb: 1, borderBottom: "1px solid #e3e8ee" }}
           >
             <Tabs
               value={activeTab}
@@ -822,7 +815,7 @@ const KanchButtonStage = () => {
                                       color:
                                         memo.kanchButtonDetails
                                           .completedShirts ===
-                                          memo.kanchButtonDetails.totalShirts
+                                        memo.kanchButtonDetails.totalShirts
                                           ? "#16a34a"
                                           : "#3b82f6",
                                     }}
@@ -1059,45 +1052,45 @@ const KanchButtonStage = () => {
                 {/* ✅ Only show completion status if totalShirts is set */}
                 {selectedMemoForCompletion.kanchButtonDetails.totalShirts >
                   0 && (
-                    <Box
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      mt: 0.5,
+                    }}
+                  >
+                    <Typography
                       sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1,
-                        mt: 0.5,
+                        fontSize: "12px",
+                        color: "#6b7280",
+                        fontWeight: 600,
                       }}
                     >
-                      <Typography
-                        sx={{
-                          fontSize: "12px",
-                          color: "#6b7280",
-                          fontWeight: 600,
-                        }}
-                      >
-                        COMPLETION STATUS:
-                      </Typography>
-                      <Typography
-                        sx={{
-                          fontSize: "13px",
-                          fontWeight: 600,
-                          color:
-                            selectedMemoForCompletion.kanchButtonDetails
-                              .completedShirts ===
-                              selectedMemoForCompletion.kanchButtonDetails
-                                .totalShirts
-                              ? "#16a34a"
-                              : "#3b82f6",
-                        }}
-                      >
-                        {
+                      COMPLETION STATUS:
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        color:
                           selectedMemoForCompletion.kanchButtonDetails
-                            .completedShirts
-                        }{" "}
-                        /{" "}
-                        {selectedMemoForCompletion.kanchButtonDetails.totalShirts}
-                      </Typography>
-                    </Box>
-                  )}
+                            .completedShirts ===
+                          selectedMemoForCompletion.kanchButtonDetails
+                            .totalShirts
+                            ? "#16a34a"
+                            : "#3b82f6",
+                      }}
+                    >
+                      {
+                        selectedMemoForCompletion.kanchButtonDetails
+                          .completedShirts
+                      }{" "}
+                      /{" "}
+                      {selectedMemoForCompletion.kanchButtonDetails.totalShirts}
+                    </Typography>
+                  </Box>
+                )}
               </Box>
             )}
           </Box>

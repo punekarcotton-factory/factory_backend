@@ -319,15 +319,11 @@ const PreStitcherStage = () => {
 
   return (
     <>
-      <Box sx={{ minHeight: "100%", pb: 4, mt: 3 }}>
+      <Box sx={{ minHeight: "100vh", pb: 4, mt: 3 }}>
         <Container maxWidth={false} disableGutters sx={{ px: 3 }}>
           <Paper
             elevation={0}
             sx={{
-              position: "sticky",
-              top: 0,
-              zIndex: 10,
-              backgroundColor: "#ffffff",
               mb: 1,
               borderBottom: "1px solid #e3e8ee",
             }}
@@ -1028,7 +1024,7 @@ const PreStitcherStage = () => {
                                         const optionPercentage =
                                           data.total > 0
                                             ? (data.completed / data.total) *
-                                            100
+                                              100
                                             : 0;
                                         return (
                                           <Box key={idx} sx={{ mb: 1 }}>
@@ -1068,7 +1064,7 @@ const PreStitcherStage = () => {
                                                 "& .MuiLinearProgress-bar": {
                                                   backgroundColor:
                                                     data.completed ===
-                                                      data.total
+                                                    data.total
                                                       ? "#16a34a"
                                                       : "#3b82f6",
                                                 },

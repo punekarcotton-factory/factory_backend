@@ -140,7 +140,7 @@ const ReturnFabricManagement = () => {
   }
 
   return (
-    <Box sx={{ p: 2, backgroundColor: "#f9fafb", minHeight: "100%" }}>
+    <Box sx={{ p: 2, backgroundColor: "#f9fafb", minHeight: "100vh" }}>
       <Box sx={{ maxWidth: "1600px", mx: "auto" }}>
 
         {/* Header */}

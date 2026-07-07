@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -12,198 +12,141 @@ import {
   Alert,
   MenuItem,
   Divider,
-  InputAdornment
-} from '@mui/material'
-import CloseIcon from '@mui/icons-material/Close'
-import EditIcon from '@mui/icons-material/Edit'
-import Visibility from '@mui/icons-material/Visibility'
-import VisibilityOff from '@mui/icons-material/VisibilityOff'
-import axiosInstance from '../utils/axiosInstance'
-import { useDispatch } from 'react-redux'
-import { showSnackbar } from '../Slice/snackbarSlice'
+} from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import EditIcon from "@mui/icons-material/Edit";
+import axiosInstance from "../utils/axiosInstance";
+import { useDispatch } from "react-redux";
+import { showSnackbar } from "../Slice/snackbarSlice";
 
 const EditUserModal = ({ open, onClose, userToEdit, onUserUpdated }) => {
-  const dispatch = useDispatch()
+  const dispatch = useDispatch();
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    roleId: '',
-    password: ''
-  })
-  const [roles, setRoles] = useState([])
-  const [error, setError] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    roleId: "",
+  });
+  const [roles, setRoles] = useState([]);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const textFieldStyle = {
-    '& .MuiInputBase-root': {
-      fontSize: '14px',
-      backgroundColor: '#ffffff',
-      borderRadius: '8px'
+    "& .MuiInputBase-root": {
+      fontSize: "14px",
+      backgroundColor: "#ffffff",
+      borderRadius: "8px",
     },
-    '& .MuiInputLabel-root': {
-      fontSize: '14px',
-      color: '#6b7280'
+    "& .MuiInputLabel-root": {
+      fontSize: "14px",
+      color: "#6b7280",
     },
-    '& .MuiOutlinedInput-root': {
-      '& fieldset': { borderColor: '#e5e7eb' },
-      '&:hover fieldset': { borderColor: '#667eea' },
-      '&.Mui-focused fieldset': { borderColor: '#667eea', borderWidth: '1.5px' }
-    }
-  }
+    "& .MuiOutlinedInput-root": {
+      "& fieldset": { borderColor: "#e5e7eb" },
+      "&:hover fieldset": { borderColor: "#667eea" },
+      "&.Mui-focused fieldset": { borderColor: "#667eea", borderWidth: "1.5px" },
+    },
+  };
 
   // Pre-fill form when user changes
   useEffect(() => {
     if (userToEdit) {
       setFormData({
-        firstName: userToEdit.firstName || '',
-        lastName: userToEdit.lastName || '',
-        email: userToEdit.email || '',
-        phone: userToEdit.phone || '',
-        roleId: userToEdit.roleId || '',
-        password: ''
-      })
-      setError('')
-      setShowPassword(false)
+        firstName: userToEdit.firstName || "",
+        lastName: userToEdit.lastName || "",
+        email: userToEdit.email || "",
+        phone: userToEdit.phone || "",
+        roleId: userToEdit.roleId || "",
+      });
+      setError("");
     }
-  }, [userToEdit])
+  }, [userToEdit]);
 
   const fetchRoles = async () => {
     try {
-      const response = await axiosInstance.get('/roles')
-      const rolesData = response.data?.data || response.data || []
-      setRoles(rolesData)
+      const response = await axiosInstance.get("/roles");
+      const rolesData = response.data?.data || response.data || [];
+      setRoles(rolesData);
     } catch (err) {
-      console.error('Error fetching roles:', err)
+      console.error("Error fetching roles:", err);
     }
-  }
+  };
 
   useEffect(() => {
     if (open && roles.length === 0) {
-      fetchRoles()
+      fetchRoles();
     }
-  }, [open])
+  }, [open]);
 
-  const handleInputChange = e => {
-    const { name, value } = e.target
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
 
-    if (name === 'firstName' || name === 'lastName') {
-      if (!/^[a-zA-Z\s]*$/.test(value)) return
-    }
-
-    if (name === 'phone') {
-      const digits = value.replace(/\D/g, '')
-      if (digits.length > 10) return
-      setFormData(prev => ({ ...prev, phone: digits }))
-      if (error) setError('')
-      return
+    if (name === "firstName" || name === "lastName") {
+      if (!/^[a-zA-Z\s]*$/.test(value)) return;
     }
 
-    setFormData(prev => ({ ...prev, [name]: value }))
-    if (error) setError('')
-  }
-
-  const handleSubmit = async e => {
-    e.preventDefault()
-    setError('')
-
-    if (
-      !formData.firstName ||
-      !formData.lastName ||
-      !formData.email ||
-      !formData.phone ||
-      !formData.roleId
-    ) {
-      setError('All fields are required.')
-      return
+    if (name === "phone") {
+      const digits = value.replace(/\D/g, "");
+      if (digits.length > 10) return;
+      setFormData((prev) => ({ ...prev, phone: digits }));
+      if (error) setError("");
+      return;
     }
 
-    // Validate password only if provided
-    // if (formData.password && formData.password.length < 8) {
-    //   setError('Password must be at least 8 characters.')
-    //   return
-    // }
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (error) setError("");
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.roleId) {
+      setError("All fields are required.");
+      return;
+    }
 
     try {
-      setSubmitting(true)
-      const userId = userToEdit?.id || userToEdit?._id
-
-      // Only include password in payload if user filled it in
-      const payload = {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: formData.phone,
-        roleId: formData.roleId,
-        ...(formData.password ? { password: formData.password } : {})
-      }
-
-      await axiosInstance.put(`/users/${userId}`, payload)
-      dispatch(
-        showSnackbar({
-          open: true,
-          severity: 'success',
-          message: 'User updated successfully!'
-        })
-      )
-      onUserUpdated()
-      onClose()
+      setSubmitting(true);
+      const userId = userToEdit?.id || userToEdit?._id;
+      await axiosInstance.put(`/users/${userId}`, formData);
+      dispatch(showSnackbar({ open: true, severity: "success", message: "User updated successfully!" }));
+      onUserUpdated();
+      onClose();
     } catch (err) {
-      console.error('Error updating user:', err)
-      setError(
-        err.response?.data?.message ||
-          'Failed to update user. Please try again.'
-      )
+      console.error("Error updating user:", err);
+      setError(err.response?.data?.message || "Failed to update user. Please try again.");
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   const handleClose = () => {
     if (!submitting) {
-      setError('')
-      setShowPassword(false)
-      onClose()
+      setError("");
+      onClose();
     }
-  }
+  };
 
   return (
     <Dialog
       open={open}
       onClose={handleClose}
-      maxWidth='sm'
+      maxWidth="sm"
       fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: '12px',
-          boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
-        }
-      }}
+      PaperProps={{ sx: { borderRadius: "12px", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)" } }}
     >
       <DialogTitle sx={{ pb: 2, px: 3 }}>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <EditIcon sx={{ color: '#667eea' }} />
-            <Typography
-              sx={{ fontWeight: 600, fontSize: '18px', color: '#111827' }}
-            >
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <EditIcon sx={{ color: "#667eea" }} />
+            <Typography sx={{ fontWeight: 600, fontSize: "18px", color: "#111827" }}>
               Edit User
             </Typography>
           </Box>
-          <IconButton
-            onClick={handleClose}
-            disabled={submitting}
-            sx={{ color: '#9ca3af', '&:hover': { backgroundColor: '#f3f4f6' } }}
-          >
-            <CloseIcon fontSize='small' />
+          <IconButton onClick={handleClose} disabled={submitting} sx={{ color: "#9ca3af", "&:hover": { backgroundColor: "#f3f4f6" } }}>
+            <CloseIcon fontSize="small" />
           </IconButton>
         </Box>
       </DialogTitle>
@@ -213,208 +156,74 @@ const EditUserModal = ({ open, onClose, userToEdit, onUserUpdated }) => {
       <DialogContent sx={{ px: 3, pb: 3 }}>
         {error && (
           <Alert
-            severity='error'
-            sx={{
-              mb: 2.5,
-              fontSize: '13px',
-              borderRadius: '8px',
-              backgroundColor: '#fef2f2',
-              color: '#991b1b'
-            }}
-            onClose={() => setError('')}
+            severity="error"
+            sx={{ mb: 2.5, fontSize: "13px", borderRadius: "8px", backgroundColor: "#fef2f2", color: "#991b1b" }}
+            onClose={() => setError("")}
           >
             {error}
           </Alert>
         )}
 
-        <Box component='form' onSubmit={handleSubmit}>
+        <Box component="form" onSubmit={handleSubmit}>
           {/* First Name & Last Name */}
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: { xs: 'column', sm: 'row' },
-              gap: 1.5,
-              mb: 1.5
-            }}
-          >
+          <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1.5, mb: 1.5 }}>
             <Box sx={{ flex: 1 }}>
-              <Typography
-                sx={{
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  color: '#374151',
-                  mb: 0.75
-                }}
-              >
-                First Name
-              </Typography>
+              <Typography sx={{ fontSize: "13px", fontWeight: 500, color: "#374151", mb: 0.75 }}>First Name</Typography>
               <TextField
-                fullWidth
-                size='small'
-                name='firstName'
-                value={formData.firstName}
-                onChange={handleInputChange}
-                disabled={submitting}
-                sx={textFieldStyle}
+                fullWidth size="small" name="firstName"
+                value={formData.firstName} onChange={handleInputChange}
+                disabled={submitting} sx={textFieldStyle}
               />
             </Box>
             <Box sx={{ flex: 1 }}>
-              <Typography
-                sx={{
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  color: '#374151',
-                  mb: 0.75
-                }}
-              >
-                Last Name
-              </Typography>
+              <Typography sx={{ fontSize: "13px", fontWeight: 500, color: "#374151", mb: 0.75 }}>Last Name</Typography>
               <TextField
-                fullWidth
-                size='small'
-                name='lastName'
-                value={formData.lastName}
-                onChange={handleInputChange}
-                disabled={submitting}
-                sx={textFieldStyle}
+                fullWidth size="small" name="lastName"
+                value={formData.lastName} onChange={handleInputChange}
+                disabled={submitting} sx={textFieldStyle}
               />
             </Box>
           </Box>
 
           {/* Email */}
           <Box sx={{ mb: 1.5 }}>
-            <Typography
-              sx={{
-                fontSize: '13px',
-                fontWeight: 500,
-                color: '#374151',
-                mb: 0.75
-              }}
-            >
-              Email Address
-            </Typography>
+            <Typography sx={{ fontSize: "13px", fontWeight: 500, color: "#374151", mb: 0.75 }}>Email Address</Typography>
             <TextField
-              fullWidth
-              size='small'
-              name='email'
-              type='email'
-              value={formData.email}
-              onChange={handleInputChange}
-              disabled={submitting}
-              sx={textFieldStyle}
+              fullWidth size="small" name="email" type="email"
+              value={formData.email} onChange={handleInputChange}
+              disabled={submitting} sx={textFieldStyle}
             />
           </Box>
 
           {/* Phone */}
           <Box sx={{ mb: 1.5 }}>
-            <Typography
-              sx={{
-                fontSize: '13px',
-                fontWeight: 500,
-                color: '#374151',
-                mb: 0.75
-              }}
-            >
-              Phone Number
-            </Typography>
+            <Typography sx={{ fontSize: "13px", fontWeight: 500, color: "#374151", mb: 0.75 }}>Phone Number</Typography>
             <TextField
-              fullWidth
-              size='small'
-              name='phone'
-              value={formData.phone}
-              onChange={handleInputChange}
-              disabled={submitting}
-              sx={textFieldStyle}
+              fullWidth size="small" name="phone"
+              value={formData.phone} onChange={handleInputChange}
+              disabled={submitting} sx={textFieldStyle}
             />
           </Box>
 
           {/* Role */}
-          <Box sx={{ mb: 1.5 }}>
-            <Typography
-              sx={{
-                fontSize: '13px',
-                fontWeight: 500,
-                color: '#374151',
-                mb: 0.75
-              }}
-            >
-              Role
-            </Typography>
+          <Box>
+            <Typography sx={{ fontSize: "13px", fontWeight: 500, color: "#374151", mb: 0.75 }}>Role</Typography>
             <TextField
-              select
-              fullWidth
-              size='small'
-              name='roleId'
+              select fullWidth size="small" name="roleId"
               value={formData.roleId}
               disabled
-              helperText='Role cannot be changed after creation.'
+              helperText="Role cannot be changed after creation."
               sx={{
                 ...textFieldStyle,
-                '& .MuiFormHelperText-root': {
-                  fontSize: '11px',
-                  color: '#9ca3af'
-                }
+                "& .MuiFormHelperText-root": { fontSize: "11px", color: "#9ca3af" },
               }}
             >
-              {roles.map(role => (
-                <MenuItem
-                  key={role.id || role._id}
-                  value={role.id || role._id}
-                  sx={{ fontSize: '14px' }}
-                >
+              {roles.map((role) => (
+                <MenuItem key={role.id || role._id} value={role.id || role._id} sx={{ fontSize: "14px" }}>
                   {role.roleName}
                 </MenuItem>
               ))}
             </TextField>
-          </Box>
-
-          {/* Password */}
-          <Box>
-            <Typography
-              sx={{
-                fontSize: '13px',
-                fontWeight: 500,
-                color: '#374151',
-                mb: 0.75
-              }}
-            >
-              New Password{' '}
-              <Typography
-                component='span'
-                sx={{ fontSize: '12px', fontWeight: 400, color: '#9ca3af' }}
-              >
-                (leave blank to keep current)
-              </Typography>
-            </Typography>
-            <TextField
-              fullWidth
-              size='small'
-              name='password'
-              type={showPassword ? 'text' : 'password'}
-              placeholder='Enter new password'
-              value={formData.password}
-              onChange={handleInputChange}
-              disabled={submitting}
-              sx={textFieldStyle}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position='end'>
-                    <IconButton
-                      onClick={() => setShowPassword(prev => !prev)}
-                      edge='end'
-                      size='small'
-                      sx={{ color: '#9ca3af', '&:hover': { color: '#667eea' } }}
-                    >
-                      {showPassword ? (
-                        <VisibilityOff fontSize='small' />
-                      ) : (
-                        <Visibility fontSize='small' />
-                      )}
-                    </IconButton>
-                  </InputAdornment>
-                )
-              }}
-            />
           </Box>
         </Box>
       </DialogContent>
@@ -426,39 +235,26 @@ const EditUserModal = ({ open, onClose, userToEdit, onUserUpdated }) => {
           onClick={handleClose}
           disabled={submitting}
           fullWidth
-          sx={{
-            textTransform: 'none',
-            color: '#6b7280',
-            fontSize: '14px',
-            fontWeight: 500,
-            py: 1.25,
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb'
-          }}
+          sx={{ textTransform: "none", color: "#6b7280", fontSize: "14px", fontWeight: 500, py: 1.25, borderRadius: "8px", border: "1px solid #e5e7eb" }}
         >
           Cancel
         </Button>
         <Button
-          variant='contained'
+          variant="contained"
           onClick={handleSubmit}
           disabled={submitting}
           fullWidth
           sx={{
-            textTransform: 'none',
-            fontSize: '14px',
-            fontWeight: 600,
-            py: 1.25,
-            borderRadius: '8px',
-            background: '#667eea',
-            boxShadow: '0 4px 6px -1px rgba(102,126,234,0.3)',
-            '&:hover': { background: '#5a6fd6' }
+            textTransform: "none", fontSize: "14px", fontWeight: 600, py: 1.25, borderRadius: "8px",
+            background: "#667eea", boxShadow: "0 4px 6px -1px rgba(102,126,234,0.3)",
+            "&:hover": { background: "#5a6fd6" },
           }}
         >
-          {submitting ? 'Saving...' : 'Save Changes'}
+          {submitting ? "Saving..." : "Save Changes"}
         </Button>
       </DialogActions>
     </Dialog>
-  )
-}
+  );
+};
 
-export default EditUserModal
+export default EditUserModal;
