@@ -301,16 +301,12 @@ class TailorAssignmentService {
     return assignments;
   }
 
-
   public async getAssignmentSummary(deliveryMemoId: string): Promise<any> {
-    const assignments = await this.assignments.find({
-      where: { deliveryMemoId },
-      relations: ['tailor'],
-    });
-
-    const items = await this.deliveryMemoItems.find({
-      where: { deliveryMemoId },
-    });
+    const [assignments, items, memo] = await Promise.all([
+      this.assignments.find({ where: { deliveryMemoId }, relations: ['tailor'] }),
+      this.deliveryMemoItems.find({ where: { deliveryMemoId } }),
+      this.deliveryMemos.findOne({ where: { _id: deliveryMemoId } }),
+    ]);
 
     const totalShirtQuantity = items.reduce((sum, item) => sum + (item.shirtQuantity || 0), 0);
 
@@ -333,6 +329,7 @@ class TailorAssignmentService {
       });
 
     return {
+      dmNumber: memo?.dmNumber || null,
       totalShirtQuantity,
       assignments: assignments.map(a => ({
         _id: a._id,
@@ -356,7 +353,9 @@ class TailorAssignmentService {
     };
   }
 
-  public async getAvailableOptionsWithRemaining(deliveryMemoId: string): Promise<Array<{ key: string; label: string; remaining: number; total: number }>> {
+  public async getAvailableOptionsWithRemaining(
+    deliveryMemoId: string,
+  ): Promise<Array<{ key: string; label: string; remaining: number; total: number }>> {
     const remainingWork = await this.getRemainingWorkForMemo(deliveryMemoId);
     const items = await this.deliveryMemoItems.find({ where: { deliveryMemoId } });
     const totalShirts = items.reduce((sum, item) => sum + (item.shirtQuantity || 0), 0);
@@ -430,7 +429,7 @@ class TailorAssignmentService {
 
     return remainingWork;
   }
- 
+
   public getAvailableOptions(): Array<{ key: string; label: string }> {
     return [
       { key: 'cuff', label: 'Cuff' },
@@ -547,7 +546,7 @@ class TailorAssignmentService {
 
       // 5. Log split on parent
       const refreshedParentItems = await itemRepo.find({ where: { deliveryMemoId: parentMemo._id } });
-      
+
       await stageHistoryRepo.save(
         stageHistoryRepo.create({
           deliveryMemoId: parentMemo._id,

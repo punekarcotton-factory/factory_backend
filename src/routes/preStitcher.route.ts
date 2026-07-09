@@ -42,8 +42,16 @@ class PreStitcherRoute implements Routes {
     // Get assignment details with options by memo ID
     this.router.get(`${this.path}/memos/:memoId/assignment`, this.preStitcherController.getAssignmentByMemo);
 
+    // Get all assignments for a memo ID
+    this.router.get(`${this.path}/memos/:memoId/pre-stitcher-assignments`, this.preStitcherController.getAssignmentsByMemo);
+
+
     // Complete pre-stitching memo
     this.router.post(`${this.path}/memos/:memoId/complete`, this.preStitcherController.completeMemo);
+
+    // Admin complete pre-stitching memo on behalf of pre-stitcher
+    this.router.post(`${this.path}/memos/:memoId/admin-complete`, this.preStitcherController.adminCompleteMemo);
+
 
 
     // Get report for a pre-stitcher (BEFORE /:preStitcherId/memos)

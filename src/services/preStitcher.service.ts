@@ -9,7 +9,7 @@ import { PreStitchOptionsEntity } from '@/entities/prestitchOptions.entity';
 import { UserEntity } from '@/entities/users.entity';
 import { HttpException } from '@/exceptions/HttpException';
 import DeliveryMemoStageHistoryService from './deliveryMemoStageHistory.service';
-import { PreStitcherPartialCompletionEntity } from '@/entities/preStitcherPartialCompletion.entity';
+import { PreStitcherPartialCompletionEntity, PartialCompletionStatus } from '@/entities/preStitcherPartialCompletion.entity';
 import { In, IsNull } from 'typeorm';
 
 class PreStitcherService {
@@ -488,6 +488,155 @@ public async assignMultiplePreStitchers(
         deliveryMemoId: memo._id,
         stage: memo.stage,
         message: 'Pre-stitching completed successfully',
+      };
+    });
+  }
+
+  public async adminCompleteMemo(deliveryMemoId: string, completedBy: string, notes?: string): Promise<any> {
+    return DBDataSource.transaction(async manager => {
+      const memoRepo = manager.getRepository(DeliveryMemoEntity);
+      const assignmentRepo = manager.getRepository(PreStitcherAssignmentEntity);
+      const partialCompletionRepo = manager.getRepository(PreStitcherPartialCompletionEntity);
+
+      const memo = await memoRepo.findOne({
+        where: { _id: deliveryMemoId },
+        relations: ['items'],
+      });
+
+      if (!memo) {
+        throw new HttpException(404, 'Delivery memo not found');
+      }
+
+      if (memo.stage !== 'PRE_STITCHER_ASSIGNED') {
+        throw new HttpException(400, `Cannot complete memo in stage: ${memo.stage}`);
+      }
+
+      const receiverId = completedBy ? completedBy : null;
+
+      // 1. Find all partial completions for this memo in HANDED_OVER status and mark them received
+      const pendingCompletions = await partialCompletionRepo.find({
+        where: { deliveryMemoId, status: PartialCompletionStatus.HANDED_OVER },
+      });
+
+      for (const pc of pendingCompletions) {
+        pc.status = PartialCompletionStatus.RECEIVED_BY_NEXT_STAGE;
+        pc.receivedAt = new Date();
+        pc.receivedBy = receiverId;
+        if (notes) {
+          pc.notes = pc.notes ? `${pc.notes}\n${notes}` : notes;
+        }
+        await partialCompletionRepo.save(pc);
+
+        await this.stageHistoryService.createStageHistory({
+          deliveryMemoId: pc.deliveryMemoId,
+          stage: 'PRE_STITCHER_HANDOVER_RECEIVED',
+          performedBy: completedBy,
+          metadata: {
+            partialCompletionId: pc._id,
+            assignmentId: pc.assignmentId,
+            totalShirtsReceived: pc.totalShirtsHandedOver,
+            notes,
+            action: 'ADMIN_AUTO_RECEIVE',
+          },
+        });
+      }
+
+      // 2. Complete active assignments and create a partial completion record for any remaining/unrecorded work
+      const assignments = await assignmentRepo.find({
+        where: { deliveryMemoId },
+      });
+
+      for (const assignment of assignments) {
+        if (assignment.status !== PreStitcherAssignmentStatus.COMPLETED && assignment.status !== PreStitcherAssignmentStatus.UNASSIGNED) {
+          // Initialize optionProgress if not exists
+          if (!assignment.optionProgress || assignment.optionProgress.length === 0) {
+            assignment.optionProgress = assignment.assignedOptions.map(opt => ({
+              option: opt.option,
+              totalQuantity: opt.quantity,
+              completedQuantity: 0,
+              inProgressQuantity: opt.quantity,
+            }));
+          }
+
+          // Calculate remaining items for partial completion record
+          const completedItems = [];
+          let totalShirtsHandedOver = 0;
+
+          assignment.optionProgress = assignment.optionProgress.map(progress => {
+            const remaining = progress.totalQuantity - progress.completedQuantity;
+            if (remaining > 0) {
+              completedItems.push({
+                option: progress.option,
+                completedQuantity: remaining,
+              });
+              totalShirtsHandedOver += remaining;
+            }
+
+            return {
+              ...progress,
+              completedQuantity: progress.totalQuantity,
+              inProgressQuantity: 0,
+            };
+          });
+
+          // If there is any remaining work completed by the admin, create a partial completion record
+          if (completedItems.length > 0) {
+            const partialCompletion = partialCompletionRepo.create({
+              assignmentId: assignment._id,
+              deliveryMemoId: assignment.deliveryMemoId,
+              preStitcherId: assignment.preStitcherId,
+              completedItems,
+              totalShirtsHandedOver,
+              status: PartialCompletionStatus.RECEIVED_BY_NEXT_STAGE,
+              notes: notes || 'Completed by admin on behalf of pre-stitcher',
+              receivedAt: new Date(),
+              receivedBy: receiverId,
+            });
+
+            await partialCompletionRepo.save(partialCompletion);
+
+            // Save history for this automatic handover & receipt
+            await this.stageHistoryService.createStageHistory({
+              deliveryMemoId: assignment.deliveryMemoId,
+              stage: 'PRE_STITCHER_HANDOVER_RECEIVED',
+              performedBy: completedBy,
+              metadata: {
+                partialCompletionId: partialCompletion._id,
+                assignmentId: assignment._id,
+                totalShirtsReceived: totalShirtsHandedOver,
+                notes: 'Auto-created and received during admin completion',
+                action: 'ADMIN_AUTO_HANDOVER_AND_RECEIVE',
+              },
+            });
+          }
+
+          assignment.status = PreStitcherAssignmentStatus.COMPLETED;
+          assignment.completedAt = new Date();
+          assignment.completedQuantity = assignment.optionProgress.reduce((sum, p) => sum + p.completedQuantity, 0);
+          await assignmentRepo.save(assignment);
+        }
+      }
+
+      memo.stage = 'PRE_STITCHER_COMPLETED';
+      memo.assignedPreStitcherId = null;
+      await memoRepo.save(memo);
+
+      await this.stageHistoryService.createStageHistory({
+        deliveryMemoId,
+        stage: 'PRE_STITCHER_COMPLETED',
+        performedBy: completedBy,
+        metadata: {
+          notes,
+          action: 'ADMIN_FORCE_COMPLETE',
+          previousStage: 'PRE_STITCHER_ASSIGNED',
+          completedAt: new Date(),
+        },
+      });
+
+      return {
+        deliveryMemoId: memo._id,
+        stage: memo.stage,
+        message: 'Pre-stitching completed by admin successfully with partial completions received',
       };
     });
   }
@@ -1167,12 +1316,23 @@ public async assignMultiplePreStitchers(
       }
 
       let allCompleted = true;
+      const completedItems = [];
+      let totalShirtsHandedOver = 0;
 
       for (const update of optionUpdates) {
         const progress = assignment.optionProgress.find(p => p.option === update.option);
         if (progress) {
           const newCompleted = progress.completedQuantity + update.completedQuantity;
           const completed = Math.min(newCompleted, progress.totalQuantity);
+          const actualCompletedQty = completed - progress.completedQuantity;
+
+          if (actualCompletedQty > 0) {
+            completedItems.push({
+              option: progress.option,
+              completedQuantity: actualCompletedQty,
+            });
+            totalShirtsHandedOver += actualCompletedQty;
+          }
 
           progress.completedQuantity = completed;
           progress.inProgressQuantity = progress.totalQuantity - completed;
@@ -1181,6 +1341,37 @@ public async assignMultiplePreStitchers(
             allCompleted = false;
           }
         }
+      }
+
+      if (completedItems.length > 0) {
+        const receiverId = isUuid(performedBy) ? performedBy : null;
+        const partialCompletionRepo = manager.getRepository(PreStitcherPartialCompletionEntity);
+        const partialCompletion = partialCompletionRepo.create({
+          assignmentId: assignment._id,
+          deliveryMemoId: assignment.deliveryMemoId,
+          preStitcherId: assignment.preStitcherId,
+          completedItems,
+          totalShirtsHandedOver,
+          status: PartialCompletionStatus.RECEIVED_BY_NEXT_STAGE,
+          notes: notes || 'Progress updated by admin',
+          receivedAt: new Date(),
+          receivedBy: receiverId,
+        });
+
+        await partialCompletionRepo.save(partialCompletion);
+
+        await this.stageHistoryService.createStageHistory({
+          deliveryMemoId: assignment.deliveryMemoId,
+          stage: 'PRE_STITCHER_HANDOVER_RECEIVED',
+          performedBy,
+          metadata: {
+            partialCompletionId: partialCompletion._id,
+            assignmentId: assignment._id,
+            totalShirtsReceived: totalShirtsHandedOver,
+            notes: 'Handover received from admin update',
+            action: 'ADMIN_AUTO_HANDOVER_AND_RECEIVE',
+          },
+        });
       }
 
       if (allCompleted) {
@@ -1194,7 +1385,9 @@ public async assignMultiplePreStitchers(
         assignment.notes = notes;
       }
 
+      assignment.completedQuantity = assignment.optionProgress.reduce((sum, p) => sum + p.completedQuantity, 0);
       await assignmentRepo.save(assignment);
+
 
       //  Check if ALL assignments for memo are completed
       const allAssignments = await assignmentRepo.find({

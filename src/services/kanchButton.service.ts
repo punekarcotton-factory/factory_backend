@@ -47,6 +47,7 @@ class KanchButtonService {
         return {
           _id: memo._id,
           deliveryMemoId: memo._id,
+          dmNumber: memo.dmNumber || null,
           stage: memo.stage,
           status: memo.status,
           createdAt: memo.createdAt,
@@ -59,17 +60,17 @@ class KanchButtonService {
           kanchButtonStatus: memo.kanchButtonAssignmentStatus || 'NOT_ASSIGNED',
           kanchButtonDetails: memo.KanchButtonDetails
             ? {
-              _id: memo.KanchButtonDetails._id,
-              name: memo.KanchButtonDetails.name,
-              phoneNumber: memo.KanchButtonDetails.phoneNumber,
-              status: memo.kanchButtonAssignmentStatus,
-              returnStatus: memo.kanchButtonReturnStatus,
-              completedShirts: memo.KanchButtonDetails.completedShirts || 0,
-              totalShirts: memo.KanchButtonDetails.totalShirts || 0,
-              progressEntries: memo.KanchButtonDetails.progressEntries || [],
+                _id: memo.KanchButtonDetails._id,
+                name: memo.KanchButtonDetails.name,
+                phoneNumber: memo.KanchButtonDetails.phoneNumber,
+                status: memo.kanchButtonAssignmentStatus,
+                returnStatus: memo.kanchButtonReturnStatus,
+                completedShirts: memo.KanchButtonDetails.completedShirts || 0,
+                totalShirts: memo.KanchButtonDetails.totalShirts || 0,
+                progressEntries: memo.KanchButtonDetails.progressEntries || [],
 
-              notes: memo.KanchButtonDetails.notes || null,
-            }
+                notes: memo.KanchButtonDetails.notes || null,
+              }
             : null,
         };
       }),
@@ -95,7 +96,6 @@ class KanchButtonService {
       throw new Error('Cannot assign kanch button to a closed memo');
     }
 
-
     const totalShirts = (memo.items || []).reduce((sum, item) => sum + (item.shirtQuantity || 0), 0);
 
     let kanchButton = await this.kanchButtonDetails.findOne({
@@ -106,7 +106,6 @@ class KanchButtonService {
     });
 
     if (!kanchButton) {
-
       kanchButton = this.kanchButtonDetails.create({
         name: kanchButtonName,
         phoneNumber: kanchButtonPhoneNumber,
@@ -119,7 +118,6 @@ class KanchButtonService {
       });
       await this.kanchButtonDetails.save(kanchButton);
     } else {
-
       kanchButton = this.kanchButtonDetails.create({
         name: kanchButtonName,
         phoneNumber: kanchButtonPhoneNumber,
@@ -165,7 +163,6 @@ class KanchButtonService {
 
     kanchButton.completedShirts = kanchButton.completedShirts + completedQuantity;
 
-
     const progressEntry = {
       completedQuantity: completedQuantity,
       performedBy,
@@ -206,7 +203,6 @@ class KanchButtonService {
     }
     memo.kanchButtonAssignmentStatus = KanchButtonAssignmentStatus.COMPLETED;
     memo.kanchButtonReturnStatus = KanchButtonReturnStatus.COMPLETED;
-
 
     memo.status = MemoStatus.CLOSED;
     memo.stage = 'COMPLETED';
@@ -277,14 +273,14 @@ class KanchButtonService {
           kanchButtonStatus: memo.kanchButtonAssignmentStatus || 'NOT_ASSIGNED',
           kanchButtonDetails: memo.KanchButtonDetails
             ? {
-              _id: memo.KanchButtonDetails._id,
-              name: memo.KanchButtonDetails.name,
-              phoneNumber: memo.KanchButtonDetails.phoneNumber,
-              status: memo.kanchButtonAssignmentStatus,
-              returnStatus: memo.kanchButtonReturnStatus,
-              progressEntries: memo.KanchButtonDetails.progressEntries || [],
-              notes: memo.KanchButtonDetails.notes || null,
-            }
+                _id: memo.KanchButtonDetails._id,
+                name: memo.KanchButtonDetails.name,
+                phoneNumber: memo.KanchButtonDetails.phoneNumber,
+                status: memo.kanchButtonAssignmentStatus,
+                returnStatus: memo.kanchButtonReturnStatus,
+                progressEntries: memo.KanchButtonDetails.progressEntries || [],
+                notes: memo.KanchButtonDetails.notes || null,
+              }
             : null,
         };
       }),
@@ -322,7 +318,6 @@ class KanchButtonService {
         const returnNotCompleted = allMemos.filter(memo => memo.kanchButtonReturnStatus === KanchButtonReturnStatus.NOT_COMPLETED).length;
         const closedMemos = allMemos.filter(memo => memo.status === MemoStatus.CLOSED).length;
         const activeMemos = allMemos.filter(memo => memo.status === MemoStatus.ACTIVE).length;
-
 
         const allNotes = allMemos.flatMap(memo => {
           const notes = [];

@@ -192,6 +192,25 @@ class PreStitcherController {
     }
   };
 
+  public adminCompleteMemo = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { memoId } = req.params;
+      const performedBy = req.body.performedBy;
+      const notes = req.body.notes;
+
+      const result = await this.preStitcherService.adminCompleteMemo(memoId, performedBy, notes);
+
+      res.status(200).json({
+        success: true,
+        data: result,
+        message: 'Memo marked as completed by admin successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+
   public getReport = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { preStitcherId } = req.params;
