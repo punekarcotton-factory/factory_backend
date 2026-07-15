@@ -434,6 +434,7 @@ class AssignTailorService {
           isActive: user ? user.isActive : true, // Default to true if no user record found
           status: tailor.status,
           returnStatus: tailor.returnStatus,
+          tailorIdentifierId: user?.tailorIdentifierId,
           createdAt: tailor.createdAt,
           updatedAt: tailor.updatedAt,
           taskStats: {

@@ -1350,6 +1350,9 @@ class DeliveryMemoService {
           })),
           tailorName: memo.tailorDetails?.name || null,
           kanchButtonName: memo.KanchButtonDetails?.name || null,
+          tailorAssignmentStatus: memo.tailorAssignmentStatus,
+          kanchButtonAssignmentStatus: memo.kanchButtonAssignmentStatus,
+          kanchButtonAssigned: !!memo.KanchButtonDetails,
           // Consolidatd assigned names for easy display
           assignedTo: [...preStitcherNames, memo.tailorDetails?.name, memo.KanchButtonDetails?.name].filter(Boolean),
         };
