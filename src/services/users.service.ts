@@ -109,7 +109,7 @@ class UserService {
       roleId: roleId,
       roleName: roleName,
       createdBy: userData.createdBy,
-      tailorIdentifierId: userData.tailorIdentifierId
+      tailorIdentifierId: userData.tailorIdentifierId,
     });
 
     // Remove password from response
@@ -157,11 +157,12 @@ class UserService {
       updateData.phone = userData.phone;
     }
 
+    if (userData.tailorIdentifierId !== undefined) {
+      updateData.tailorIdentifierId = userData.tailorIdentifierId;
+    }
+
     if (userData.roleId || userData.roleName) {
-      const { roleId, roleName } = await this.resolveRole(
-        userData.roleId,
-        userData.roleName,
-      );
+      const { roleId, roleName } = await this.resolveRole(userData.roleId, userData.roleName);
 
       updateData.roleId = roleId;
       updateData.roleName = roleName;
@@ -284,7 +285,10 @@ class UserService {
 
     if (ongoingTasks > 0) {
       if (eligibleReassignees.length === 0) {
-        throw new HttpException(409, `User has ongoing tasks and no eligible reassignees are available. Please create a new user with the same role first.`);
+        throw new HttpException(
+          409,
+          `User has ongoing tasks and no eligible reassignees are available. Please create a new user with the same role first.`,
+        );
       }
       throw new HttpException(409, `User has ongoing tasks. Please reassign tasks to another user with the same role before deleting.`);
     }
@@ -308,7 +312,10 @@ class UserService {
 
     if (!fromUser || !toUser) throw new HttpException(404, 'Users not found');
     if (fromUser.roleId !== toUser.roleId) {
-      throw new HttpException(400, `Role mismatch: cannot reassign tasks from ${fromUser.roleName} to ${toUser.roleName}. Please pick a user with the same role.`);
+      throw new HttpException(
+        400,
+        `Role mismatch: cannot reassign tasks from ${fromUser.roleName} to ${toUser.roleName}. Please pick a user with the same role.`,
+      );
     }
 
     const memoRepo = DBDataSource.getRepository(DeliveryMemoEntity);
@@ -347,7 +354,7 @@ class UserService {
 
     // 1. Reassign Pre-Stitcher tasks
     const preStitcherMemos = await memoRepo.find({
-      where: { assignedPreStitcherId: fromUser._id, stage: In(['PRE_STITCHER_ASSIGNED', 'PRE_STITCHER_IN_PROGRESS']) }
+      where: { assignedPreStitcherId: fromUser._id, stage: In(['PRE_STITCHER_ASSIGNED', 'PRE_STITCHER_IN_PROGRESS']) },
     });
     if (preStitcherMemos.length > 0) {
       const ids = preStitcherMemos.map(m => m._id);
@@ -369,12 +376,12 @@ class UserService {
       // Multiple assignments
       await tailorAssignmentRepo.update(
         { tailorId: fromTailorDetailId, status: In([TailorEntryStatus.ASSIGNED, TailorEntryStatus.IN_PROGRESS]) },
-        { tailorId: toTailorDetailId }
+        { tailorId: toTailorDetailId },
       );
       // Single assignments in DeliveryMemo
       await memoRepo.update(
         { tailorDetailsId: fromTailorDetailId, tailorAssignmentStatus: In([TailorMemoStatus.ASSIGNED, TailorMemoStatus.IN_PROGRESS]) },
-        { tailorDetailsId: toTailorDetailId }
+        { tailorDetailsId: toTailorDetailId },
       );
     }
 
@@ -391,7 +398,7 @@ class UserService {
 
       await memoRepo.update(
         { KanchButtonDetailsId: fromKanchDetailId, kanchButtonAssignmentStatus: KanchButtonAssignmentStatus.ASSIGNED },
-        { KanchButtonDetailsId: toKanchDetailId }
+        { KanchButtonDetailsId: toKanchDetailId },
       );
     }
 
@@ -409,7 +416,7 @@ class UserService {
       reassignedToId: toUser._id,
       reassignedToName: `${toUser.firstName} ${toUser.lastName}`,
       reassignedBy,
-      type: 'TASK_REASSIGNMENT'
+      type: 'TASK_REASSIGNMENT',
     };
 
     if (allMemos.length > 0) {
@@ -418,7 +425,7 @@ class UserService {
         stage: 'TASK_REASSIGNED',
         enteredAt: new Date(),
         performedBy: reassignedBy,
-        metadata: reassignMetadata
+        metadata: reassignMetadata,
       }));
       await stageHistoryRepo.save(historyEntries);
     }
@@ -428,7 +435,7 @@ class UserService {
 
   public async findUsersByRole(roleName: string): Promise<User[]> {
     const role = await this.roles.findOne({
-      where: { roleName: ILike(roleName) }
+      where: { roleName: ILike(roleName) },
     });
 
     if (!role) {
@@ -436,7 +443,7 @@ class UserService {
     }
 
     const users: User[] = await this.users.find({
-      where: { roleId: role._id, isActive: true }
+      where: { roleId: role._id, isActive: true },
     });
 
     // Remove passwords from response
