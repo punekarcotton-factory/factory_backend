@@ -1,11 +1,4 @@
-import {
-  IsEmail,
-  IsString,
-  IsOptional,
-  IsUUID,
-  ValidateIf,
-  IsNotEmpty,
-} from 'class-validator';
+import { IsEmail, IsString, IsOptional, IsUUID, ValidateIf, IsNotEmpty } from 'class-validator';
 
 export class CreateUserDto {
   @IsEmail()
@@ -85,6 +78,10 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   tailorId?: string;
+
+  @IsOptional()
+  @IsString()
+  tailorIdentifierId?: string;
 
   @IsOptional()
   @IsString()
