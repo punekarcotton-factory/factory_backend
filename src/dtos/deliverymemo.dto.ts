@@ -6,6 +6,7 @@ import {
   ValidateNested,
   IsNumber,
   IsObject,
+  IsBoolean,
   Min,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
@@ -81,6 +82,31 @@ export class CreateDeliveryMemoDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isJobWork?: boolean;
+
+  @IsString()
+  @IsOptional()
+  jobWorkWorkerId?: string;
+
+  @IsString()
+  @IsOptional()
+  jobWorkWorkerName?: string;
+
+  @IsString()
+  @IsOptional()
+  jobWorkStatus?: string;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  fabricGiven?: number;
+
+  @IsString()
+  @IsOptional()
+  fabricSKU?: string;
 }
 
 /* =========================
@@ -110,6 +136,31 @@ export class UpdateDeliveryMemoDto {
   @IsString()
   @IsOptional()
   createdBy?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isJobWork?: boolean;
+
+  @IsString()
+  @IsOptional()
+  jobWorkWorkerId?: string;
+
+  @IsString()
+  @IsOptional()
+  jobWorkWorkerName?: string;
+
+  @IsString()
+  @IsOptional()
+  jobWorkStatus?: string;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  fabricGiven?: number;
+
+  @IsString()
+  @IsOptional()
+  fabricSKU?: string;
 }
 
 /* =========================
