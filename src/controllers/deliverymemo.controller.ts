@@ -100,6 +100,34 @@ class DeliveryMemoController {
     }
   };
 
+  public updateJobWorkStatus = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const memoId: string = req.params.id;
+      const { jobWorkStatus, performedBy } = req.body;
+      const memo = await this.deliveryMemoService.updateJobWorkStatus(memoId, jobWorkStatus, performedBy);
+      res.status(200).json({ data: memo, message: 'Job Work status updated successfully' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public assignJobWorker = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const memoId: string = req.params.id;
+      const { workerName, workerPhone, workerId, performedBy } = req.body;
+      const memo = await this.deliveryMemoService.assignJobWorker(
+        memoId,
+        workerName,
+        workerPhone,
+        workerId,
+        performedBy,
+      );
+      res.status(200).json({ data: memo, message: 'Job worker assigned successfully' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   public getFabricSKUWithQuantity = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const fabrics = await this.deliveryMemoService.getFabricSKUWithQuantity();
@@ -205,6 +233,15 @@ class DeliveryMemoController {
     try {
       const data = await this.deliveryMemoService.getCuttingSummary();
       res.status(200).json({ data, message: 'getCuttingSummary' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public getJobWorkSummary = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data = await this.deliveryMemoService.getJobWorkSummary();
+      res.status(200).json({ data, message: 'getJobWorkSummary' });
     } catch (error) {
       next(error);
     }
