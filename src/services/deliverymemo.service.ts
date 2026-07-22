@@ -1353,8 +1353,12 @@ class DeliveryMemoService {
           tailorAssignmentStatus: memo.tailorAssignmentStatus,
           kanchButtonAssignmentStatus: memo.kanchButtonAssignmentStatus,
           kanchButtonAssigned: !!memo.KanchButtonDetails,
+          isJobWork: memo.isJobWork,
+          jobWorkWorkerName: memo.jobWorkWorkerName,
+          jobWorkWorkerPhone: memo.jobWorkWorkerPhone,
+          jobWorkStatus: memo.jobWorkStatus,
           // Consolidatd assigned names for easy display
-          assignedTo: [...preStitcherNames, memo.tailorDetails?.name, memo.KanchButtonDetails?.name].filter(Boolean),
+          assignedTo: [...preStitcherNames, memo.tailorDetails?.name, memo.KanchButtonDetails?.name, memo.jobWorkWorkerName].filter(Boolean),
         };
       }),
     );
