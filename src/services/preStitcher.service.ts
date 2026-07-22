@@ -11,6 +11,7 @@ import { HttpException } from '@/exceptions/HttpException';
 import DeliveryMemoStageHistoryService from './deliveryMemoStageHistory.service';
 import { PreStitcherPartialCompletionEntity, PartialCompletionStatus } from '@/entities/preStitcherPartialCompletion.entity';
 import { In, IsNull } from 'typeorm';
+import { validate as isUuid } from 'uuid';
 
 class PreStitcherService {
   public users = DBDataSource.getRepository(UserEntity);
