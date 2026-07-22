@@ -15,6 +15,13 @@ export interface DeliveryMemo {
   createdBy?: string;
   stage: string;
   notes?: string;
+  isJobWork?: boolean;
+  jobWorkWorkerId?: string | null;
+  jobWorkWorkerName?: string | null;
+  jobWorkWorkerPhone?: string | null;
+  jobWorkStatus?: string | null;
+  fabricGiven?: number | null;
+  fabricSKU?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -22,6 +29,27 @@ export interface DeliveryMemo {
 export class DeliveryMemoEntity {
   @PrimaryGeneratedColumn('uuid')
   _id: string;
+
+  @Column({ type: 'boolean', default: false })
+  isJobWork: boolean;
+
+  @Column({ type: 'uuid', nullable: true })
+  jobWorkWorkerId: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  jobWorkWorkerName: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  jobWorkWorkerPhone: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true, default: 'PENDING' })
+  jobWorkStatus: string | null;
+
+  @Column({ type: 'numeric', precision: 14, scale: 2, nullable: true })
+  fabricGiven: number | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  fabricSKU: string | null;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   createdBy: string;

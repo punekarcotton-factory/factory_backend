@@ -1345,7 +1345,7 @@ public async assignMultiplePreStitchers(
       }
 
       if (completedItems.length > 0) {
-        const receiverId = isUuid(performedBy) ? performedBy : null;
+        const receiverId = (performedBy) ? performedBy : null;
         const partialCompletionRepo = manager.getRepository(PreStitcherPartialCompletionEntity);
         const partialCompletion = partialCompletionRepo.create({
           assignmentId: assignment._id,

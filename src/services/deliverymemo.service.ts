@@ -17,6 +17,7 @@ import { In, IsNull } from 'typeorm';
 import { PreStitcherAssignmentEntity, PreStitcherAssignmentStatus } from '@/entities/preStitcher.entity';
 import { PreStitcherPartialCompletionEntity } from '@/entities/preStitcherPartialCompletion.entity';
 import { PreStitchOptionsEntity } from '@/entities/prestitchOptions.entity';
+import { MemoStatus } from '@/constants/MemoStatus.enum';
 import { TailorAssignmentStatus } from '@/constants/tailorStatus.enum';
 import { KanchButtonAssignmentStatus } from '@/constants/KanchButtonStatus.enum';
 
@@ -37,8 +38,13 @@ class DeliveryMemoService {
       const query = this.deliveryMemos
         .createQueryBuilder('memo')
         .leftJoinAndSelect('memo.items', 'items')
-        .leftJoinAndSelect('memo.stageHistory', 'stageHistory')
-        .where('memo.stage = :stage', { stage });
+        .leftJoinAndSelect('memo.stageHistory', 'stageHistory');
+
+      if (stage === 'JOB_WORK') {
+        query.where('memo.stage = :stage OR memo.isJobWork = :isJobWork', { stage, isJobWork: true });
+      } else {
+        query.where('memo.stage = :stage', { stage });
+      }
 
       if (stage === 'ASSIGN_PRE_STITCHER') {
         query.andWhere('memo.assignedPreStitcherId IS NULL');
@@ -148,12 +154,21 @@ class DeliveryMemoService {
           return {
             deliveryMemoId: memo._id,
             stage: memo.stage,
+            status: memo.status,
+            notes: memo.notes,
             createdAt: memo.createdAt,
             updatedAt: memo.updatedAt,
             createdBy: memo.createdBy,
             dmNumber: memo.dmNumber,
             totalDhapFold: memo.totalDhapFold,
             assignedPreStitcherId: memo.assignedPreStitcherId,
+            isJobWork: memo.isJobWork,
+            jobWorkWorkerId: memo.jobWorkWorkerId,
+            jobWorkWorkerName: memo.jobWorkWorkerName,
+            jobWorkWorkerPhone: memo.jobWorkWorkerPhone,
+            jobWorkStatus: memo.jobWorkStatus,
+            fabricGiven: memo.fabricGiven,
+            fabricSKU: memo.fabricSKU,
             items: enrichedItems,
             itemCount: enrichedItems.length,
             stageHistory: sortedHistory,
@@ -369,7 +384,14 @@ class DeliveryMemoService {
       createdBy: memoData.createdBy,
       stage: memoData.stage,
       dmNumber: memoData.dmNumber,
-    });
+      notes: memoData.notes,
+      isJobWork: memoData.isJobWork || false,
+      jobWorkWorkerId: memoData.jobWorkWorkerId || null,
+      jobWorkWorkerName: memoData.jobWorkWorkerName || null,
+      jobWorkStatus: memoData.jobWorkStatus || 'PENDING',
+      fabricGiven: memoData.fabricGiven || null,
+      fabricSKU: memoData.fabricSKU || null,
+    } as any);
 
     let memoTotalDhapFold = 0;
 
@@ -427,9 +449,97 @@ class DeliveryMemoService {
       updatedAt: createMemoData.updatedAt,
       dmNumber: memoData.dmNumber,
       totalDhapFold: memoTotalDhapFold,
+      isJobWork: createMemoData.isJobWork,
+      jobWorkWorkerId: createMemoData.jobWorkWorkerId,
+      jobWorkWorkerName: createMemoData.jobWorkWorkerName,
+      jobWorkStatus: createMemoData.jobWorkStatus,
+      fabricGiven: createMemoData.fabricGiven,
+      fabricSKU: createMemoData.fabricSKU,
       items,
       itemCount: items.length,
     };
+  }
+
+  public async updateJobWorkStatus(memoId: string, jobWorkStatus: string, performedBy?: string): Promise<any> {
+    const memo = await this.deliveryMemos.findOne({ where: { _id: memoId } });
+    if (!memo) {
+      throw new HttpException(404, `Delivery Memo with ID ${memoId} not found`);
+    }
+
+    const updatePayload: Partial<DeliveryMemoEntity> = {
+      jobWorkStatus,
+    };
+
+    if (jobWorkStatus === 'COMPLETED') {
+      updatePayload.status = MemoStatus.CLOSED;
+      updatePayload.closedAt = new Date();
+      if (performedBy) {
+        updatePayload.closedBy = performedBy;
+      }
+    } else {
+      updatePayload.status = MemoStatus.ACTIVE;
+    }
+
+    await this.deliveryMemos.update({ _id: memoId }, updatePayload);
+
+    if (performedBy) {
+      await this.stageHistoryService.createStageHistory({
+        deliveryMemoId: memoId,
+        stage: memo.stage,
+        performedBy,
+        metadata: {
+          jobWorkStatus,
+          status: updatePayload.status,
+        },
+      });
+    }
+
+    return this.findDeliveryMemoById(memoId);
+  }
+
+  public async assignJobWorker(
+    memoId: string,
+    workerName: string,
+    workerPhone?: string,
+    workerId?: string,
+    performedBy?: string,
+  ): Promise<any> {
+    const memo = await this.deliveryMemos.findOne({ where: { _id: memoId } });
+    if (!memo) {
+      throw new HttpException(404, `Delivery Memo with ID ${memoId} not found`);
+    }
+
+    const updatePayload: Partial<DeliveryMemoEntity> = {
+      jobWorkWorkerName: workerName,
+      jobWorkStatus: 'IN_PROCESS',
+    };
+
+    if (workerPhone) {
+      updatePayload.jobWorkWorkerPhone = workerPhone;
+    }
+
+    if (workerId) {
+      updatePayload.jobWorkWorkerId = workerId;
+    }
+
+    await this.deliveryMemos.update({ _id: memoId }, updatePayload);
+
+    if (performedBy) {
+      await this.stageHistoryService.createStageHistory({
+        deliveryMemoId: memoId,
+        stage: memo.stage,
+        performedBy,
+        metadata: {
+          action: 'ASSIGN_JOB_WORKER',
+          jobWorkWorkerName: workerName,
+          jobWorkWorkerPhone: workerPhone || null,
+          jobWorkWorkerId: workerId || null,
+          jobWorkStatus: 'IN_PROCESS',
+        },
+      });
+    }
+
+    return this.findDeliveryMemoById(memoId);
   }
 
   public async updateDeliveryMemo(memoId: string, memoData: UpdateDeliveryMemoDto): Promise<DeliveryMemo> {
@@ -1126,6 +1236,7 @@ class DeliveryMemoService {
       PRESTITCHER: { active: 0, completed: 0 },
       TAILOR: { active: 0, completed: 0 },
       KANCH_BUTTON: { active: 0, completed: 0 },
+      JOB_WORK: { active: 0, completed: 0 },
     };
 
     const stageLevels: Record<string, number> = {
@@ -1142,6 +1253,15 @@ class DeliveryMemoService {
     };
 
     memos.forEach(memo => {
+      if (memo.isJobWork || memo.stage === 'JOB_WORK') {
+        if (memo.status === MemoStatus.CLOSED || memo.jobWorkStatus === 'COMPLETED') {
+          stats['JOB_WORK'].completed++;
+        } else {
+          stats['JOB_WORK'].active++;
+        }
+        return;
+      }
+
       const currentStage = memo.stage || 'PENDING';
       const level = stageLevels[currentStage] ?? 0;
 
@@ -1175,6 +1295,47 @@ class DeliveryMemoService {
     });
 
     return stats;
+  }
+
+  public async getJobWorkSummary(): Promise<any> {
+    const memos = await this.deliveryMemos.find({
+      where: [{ stage: 'JOB_WORK' }, { isJobWork: true }],
+      relations: ['items'],
+      order: { createdAt: 'DESC' },
+    });
+
+    const activeCount = memos.filter(m => m.status !== MemoStatus.CLOSED && m.jobWorkStatus !== 'COMPLETED').length;
+    const completedCount = memos.filter(m => m.status === MemoStatus.CLOSED || m.jobWorkStatus === 'COMPLETED').length;
+    const pendingCount = memos.filter(m => (!m.jobWorkWorkerId || !m.jobWorkStatus || m.jobWorkStatus === 'PENDING') && m.status !== MemoStatus.CLOSED).length;
+    const inProcessCount = memos.filter(m => m.jobWorkWorkerId && m.jobWorkStatus === 'IN_PROCESS' && m.status !== MemoStatus.CLOSED).length;
+
+    const totalFabricGiven = memos.reduce((sum, m) => sum + (Number(m.fabricGiven || m.totalDhapFold) || 0), 0);
+
+    const history = memos.map(m => ({
+      deliveryMemoId: m._id,
+      dmNumber: m.dmNumber,
+      workerName: m.jobWorkWorkerName || 'Unassigned',
+      workerId: m.jobWorkWorkerId || null,
+      fabricSKU: m.fabricSKU || m.items?.[0]?.fabricSKU || 'N/A',
+      fabricGiven: m.fabricGiven || m.totalDhapFold || 0,
+      jobWorkStatus: m.jobWorkStatus || 'PENDING',
+      memoStatus: m.status,
+      createdAt: m.createdAt,
+      closedAt: m.closedAt || null,
+      notes: m.notes || '',
+    }));
+
+    return {
+      summary: {
+        totalMemos: memos.length,
+        activeCount,
+        completedCount,
+        pendingCount,
+        inProcessCount,
+        totalFabricGiven: Number(totalFabricGiven.toFixed(2)),
+      },
+      history,
+    };
   }
 
   public async getCuttingSummary(): Promise<any[]> {

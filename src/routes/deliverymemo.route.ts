@@ -27,6 +27,7 @@ class DeliveryMemoRoute implements Routes {
     this.router.get(`${this.path}/damage-history`, this.deliveryMemoController.getDamageHistory);
     this.router.get(`${this.path}/stats/summary`, this.deliveryMemoController.getMemoStats);
     this.router.get(`${this.path}/cutting/summary`, this.deliveryMemoController.getCuttingSummary);
+    this.router.get(`${this.path}/job-work/summary`, this.deliveryMemoController.getJobWorkSummary);
 
     // ========================================
     // NESTED RESOURCE ROUTES
@@ -51,6 +52,14 @@ class DeliveryMemoRoute implements Routes {
       `${this.path}/:id/stage`,
       validationMiddleware(UpdateDeliveryMemoStageDto, 'body'),
       this.deliveryMemoController.updateDeliveryMemoStage,
+    );
+    this.router.patch(
+      `${this.path}/:id/job-work-status`,
+      this.deliveryMemoController.updateJobWorkStatus,
+    );
+    this.router.post(
+      `${this.path}/:id/assign-job-worker`,
+      this.deliveryMemoController.assignJobWorker,
     );
     this.router.post(
       `${this.path}/:id/partial-assign`,
