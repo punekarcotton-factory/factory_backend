@@ -115,6 +115,7 @@ class DeliveryMemoService {
                   dhap: item.dhap,
                   fold: item.fold,
                   totalDhapFold: item.totalDhapFold,
+                  leftoverQuantity: item.leftoverQuantity || 0,
                   damagedQuantity: item.damagedQuantity || 0,
                   returnedQuantity: item.returnedQuantity || 0,
                   shirtSKUs: item.shirtSKUs || [],
@@ -133,6 +134,7 @@ class DeliveryMemoService {
                   dhap: item.dhap,
                   fold: item.fold,
                   totalDhapFold: item.totalDhapFold,
+                  leftoverQuantity: item.leftoverQuantity || 0,
                   damagedQuantity: item.damagedQuantity || 0,
                   returnedQuantity: item.returnedQuantity || 0,
                   shirtSKUs: item.shirtSKUs || [],
@@ -580,20 +582,20 @@ class DeliveryMemoService {
       }
 
       if (memoData.memos) {
-        // 1. Revert previous fabric stock deductions
+        // 1. Revert previous fabric stock deductions (using gross fabric dhap * fold)
         for (const oldItem of memo.items) {
           const fabric = await fabricRepo.findOne({ where: { sku: oldItem.fabricSKU, isDeleted: false } });
           if (fabric) {
             const currentQty = parseFloat(String(fabric.quantity));
-            const restoredQty = parseFloat(String(oldItem.totalDhapFold || 0));
-            const newQty = currentQty + restoredQty;
+            const grossQty = (parseFloat(String(oldItem.dhap || 0)) * parseFloat(String(oldItem.fold || 0))) || parseFloat(String(oldItem.totalDhapFold || 0));
+            const newQty = currentQty + grossQty;
             await fabricRepo.update({ _id: fabric._id }, { quantity: newQty });
 
             // Log stock restoration
             await txRepo.save({
               fabricSKU: oldItem.fabricSKU,
               transactionType: 'ADD',
-              quantityChanged: restoredQty,
+              quantityChanged: grossQty,
               previousQuantity: currentQty,
               newQuantity: newQty,
               deliveryMemoId: memo._id,
@@ -619,6 +621,7 @@ class DeliveryMemoService {
 
           const dhapNum = parseFloat(String(itemData.dhap || '0'));
           const foldNum = parseFloat(String(itemData.fold || '0'));
+          const leftoverNum = parseFloat(String(itemData.leftoverQuantity || '0'));
 
           if (Number.isNaN(dhapNum) || dhapNum <= 0) {
             throw new HttpException(400, `Invalid dhap value for SKU ${itemData.fabricSKU}`);
@@ -627,35 +630,37 @@ class DeliveryMemoService {
             throw new HttpException(400, `Invalid fold value for SKU ${itemData.fabricSKU}`);
           }
 
-          const totalFabricNeeded = dhapNum * foldNum;
-          newTotalDhapFold += totalFabricNeeded;
+          const grossFabricNeeded = dhapNum * foldNum;
+          const netFabricNeeded = Math.max(0, grossFabricNeeded - leftoverNum);
+          newTotalDhapFold += netFabricNeeded;
 
           const currentQty = parseFloat(String(fabric.quantity));
-          if (currentQty < totalFabricNeeded) {
+          if (currentQty < grossFabricNeeded) {
             throw new HttpException(
               400,
-              `Insufficient quantity for SKU ${itemData.fabricSKU}. Available: ${currentQty}m, Required: ${totalFabricNeeded}m (${dhapNum}m × ${foldNum} fold)`,
+              `Insufficient quantity for SKU ${itemData.fabricSKU}. Available: ${currentQty}m, Required: ${grossFabricNeeded}m (${dhapNum}m × ${foldNum} fold)`,
             );
           }
 
-          // Deduct fabric quantity
-          const newQty = currentQty - totalFabricNeeded;
+          // Deduct gross fabric quantity from stock (inventory remains fully deducted for created memo)
+          const newQty = currentQty - grossFabricNeeded;
           await fabricRepo.update({ _id: fabric._id }, { quantity: newQty });
 
-          // Save new item
+          // Save new item with net totalDhapFold moving forward to stages
           const savedItem = await memoItemRepo.save({
             deliveryMemoId: memo._id,
             fabricSKU: itemData.fabricSKU,
             dhap: dhapNum,
             fold: foldNum,
-            totalDhapFold: totalFabricNeeded,
+            leftoverQuantity: leftoverNum,
+            totalDhapFold: netFabricNeeded,
           } as any);
 
           // Log transaction
           await txRepo.save({
             fabricSKU: itemData.fabricSKU,
             transactionType: 'DEDUCT',
-            quantityChanged: totalFabricNeeded,
+            quantityChanged: grossFabricNeeded,
             previousQuantity: currentQty,
             newQuantity: newQty,
             deliveryMemoId: memo._id,

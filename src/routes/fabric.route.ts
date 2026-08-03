@@ -25,6 +25,7 @@ class FabricRoute implements Routes {
     this.router.get(`${this.path}/with-original`, this.fabricController.getFabricsWithOriginalQuantity);
     this.router.get(`${this.path}/history/all`, this.fabricController.getAllTransactionHistory);
     this.router.get(`${this.path}/reports/damage`, this.fabricController.getFabricDamageReports);
+    this.router.get(`${this.path}/reports/leftover`, this.fabricController.getFabricLeftoverReports);
     this.router.get(`${this.path}/shirt-mapping/details`, this.fabricController.getFabricShirtMappingsWithDetails);
     this.router.get(`${this.path}/shirt-mapping`, this.fabricController.getFabricShirtMappings);
     this.router.post(`${this.path}/shirt-mapping`, this.fabricController.createFabricShirtMapping);
@@ -41,6 +42,8 @@ class FabricRoute implements Routes {
     this.router.put(`${this.path}/:id`, this.upload.single('image'), this.fabricController.updateFabric);
     this.router.patch(`${this.path}/:id/quantity`, this.fabricController.updateFabricQuantity);
     this.router.post(`${this.path}/:sku/damage`, this.fabricController.markFabricDamage);
+    this.router.post(`${this.path}/:sku/leftover`, this.fabricController.markFabricLeftover);
+    this.router.get(`${this.path}/:sku/leftover`, this.fabricController.getFabricLeftoverHistory);
     this.router.get(`${this.path}/:sku/history`, this.fabricController.getFabricTransactionHistory);
   }
 }

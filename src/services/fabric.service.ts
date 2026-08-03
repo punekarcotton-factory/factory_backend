@@ -7,8 +7,11 @@ import {
   GetFabricShirtMappingsDto,
   UpdateFabricShirtMappingDto,
 } from '@/dtos/fabricShirtMapping.dto';
+import { DeliveryMemoEntity } from '@/entities/deliverymemo.entity';
+import { DeliveryMemoItemEntity } from '@/entities/deliveryMemoItem.entity';
 import { FabricEntity } from '@/entities/fabric.entity';
 import { FabricDamageEntity } from '@/entities/fabricDamage.entity';
+import { FabricLeftoverEntity } from '@/entities/fabricLeftover.entity';
 import { FabricShirtMappingEntity } from '@/entities/fabricShirtMapping.entity';
 import { FabricTransactionHistoryEntity } from '@/entities/fabricTransitionHistory';
 import { UserEntity } from '@/entities/users.entity';
@@ -21,6 +24,7 @@ export class FabricService {
   private fabricRepository: Repository<FabricEntity>;
   private transactionHistoryRepository: Repository<FabricTransactionHistoryEntity>;
   private damageRepository: Repository<FabricDamageEntity>;
+  private leftoverRepository: Repository<FabricLeftoverEntity>;
   private userRepository: Repository<UserEntity>;
   private fabricShirtMappingRepository: Repository<FabricShirtMappingEntity>;
 
@@ -28,6 +32,7 @@ export class FabricService {
     this.fabricRepository = DBDataSource.getRepository(FabricEntity);
     this.transactionHistoryRepository = DBDataSource.getRepository(FabricTransactionHistoryEntity);
     this.damageRepository = DBDataSource.getRepository(FabricDamageEntity);
+    this.leftoverRepository = DBDataSource.getRepository(FabricLeftoverEntity);
     this.userRepository = DBDataSource.getRepository(UserEntity);
     this.fabricShirtMappingRepository = DBDataSource.getRepository(FabricShirtMappingEntity);
   }
@@ -880,6 +885,197 @@ export class FabricService {
       createdAt: mapping.createdAt,
       updatedAt: mapping.updatedAt,
     }));
+  }
+
+  // =====================================
+  // LEFTOVER FABRIC TRACKING & MANAGEMENT
+  // =====================================
+
+  public async markFabricLeftover(data: {
+    fabricSKU: string;
+    leftoverQuantity: number;
+    deliveryMemoId?: string;
+    deliveryMemoItemId?: string;
+    notes?: string;
+    performedBy?: string;
+  }): Promise<any> {
+    const { fabricSKU, leftoverQuantity, deliveryMemoId, deliveryMemoItemId, notes, performedBy } = data;
+
+    const fabric = await this.getFabricBySKU(fabricSKU);
+    const currentQuantity = Number(fabric.quantity);
+
+    return DBDataSource.transaction(async manager => {
+      const leftoverRepo = manager.getRepository(FabricLeftoverEntity);
+      const historyRepo = manager.getRepository(FabricTransactionHistoryEntity);
+
+      // Deduct leftover quantity from the Delivery Memo item & overall DM totalDhapFold if deliveryMemoId is provided
+      let updatedDmItem: any = null;
+      let updatedMemoTotal: number | null = null;
+      let dmNumber: string | null = null;
+
+      if (deliveryMemoId) {
+        const memoRepo = manager.getRepository(DeliveryMemoEntity);
+        const itemRepo = manager.getRepository(DeliveryMemoItemEntity);
+
+        const memo = await memoRepo.findOne({ where: { _id: deliveryMemoId } });
+        if (memo) {
+          dmNumber = memo.dmNumber;
+        }
+
+        let targetItem: DeliveryMemoItemEntity | null = null;
+        if (deliveryMemoItemId) {
+          targetItem = await itemRepo.findOne({ where: { _id: deliveryMemoItemId } });
+        } else {
+          targetItem = await itemRepo.findOne({ where: { deliveryMemoId, fabricSKU } });
+        }
+
+        if (targetItem) {
+          const currentLeftover = Number(targetItem.leftoverQuantity || 0);
+          const newLeftover = currentLeftover + leftoverQuantity;
+          const grossFabric = Number(targetItem.dhap || 0) * Number(targetItem.fold || 0);
+          const newItemTotal = Math.max(0, (grossFabric > 0 ? grossFabric : Number(targetItem.totalDhapFold || 0)) - newLeftover);
+
+          await itemRepo.update({ _id: targetItem._id }, { leftoverQuantity: newLeftover, totalDhapFold: newItemTotal });
+
+          const allItems = await itemRepo.find({ where: { deliveryMemoId } });
+          const newTotalDhapFold = allItems.reduce((sum, item) => {
+            const itemTotal = item._id === targetItem!._id ? newItemTotal : Number(item.totalDhapFold || 0);
+            return sum + itemTotal;
+          }, 0);
+
+          await memoRepo.update({ _id: deliveryMemoId }, { totalDhapFold: newTotalDhapFold });
+          updatedDmItem = { _id: targetItem._id, leftoverQuantity: newLeftover, previousTotal: targetItem.totalDhapFold, newTotal: newItemTotal };
+          updatedMemoTotal = newTotalDhapFold;
+        }
+      }
+
+      const leftoverRecord = leftoverRepo.create({
+        fabricSKU,
+        deliveryMemoId: deliveryMemoId || null,
+        deliveryMemoItemId: deliveryMemoItemId || (updatedDmItem?._id || null),
+        leftoverQuantity,
+        performedBy,
+        notes: notes || `Leftover ${leftoverQuantity}m recorded and deducted from DM`,
+        metadata: {
+          dmNumber: dmNumber ?? null,
+          currentStock: currentQuantity,
+          dmItemPreviousTotal: updatedDmItem?.previousTotal ?? null,
+          dmItemNewTotal: updatedDmItem?.newTotal ?? null,
+          dmNewTotal: updatedMemoTotal,
+          fabricTitle: fabric.title || '',
+          fabricColor: fabric.color || '',
+          imageUrl: fabric.imageUrl || '',
+        },
+      });
+
+      await leftoverRepo.save(leftoverRecord);
+
+      const transaction = historyRepo.create({
+        fabricSKU,
+        transactionType: 'LEFTOVER',
+        quantityChanged: leftoverQuantity,
+        previousQuantity: currentQuantity,
+        newQuantity: currentQuantity,
+        deliveryMemoId: deliveryMemoId || null,
+        deliveryMemoItemId: deliveryMemoItemId || (updatedDmItem?._id || null),
+        performedBy,
+        leftoverId: leftoverRecord._id,
+        notes: notes || `Leftover ${leftoverQuantity}m recorded and deducted from DM`,
+        metadata: {
+          leftoverRecordId: leftoverRecord._id,
+          dmItemPreviousTotal: updatedDmItem?.previousTotal ?? null,
+          dmItemNewTotal: updatedDmItem?.newTotal ?? null,
+          dmNewTotal: updatedMemoTotal,
+          fabricTitle: fabric.title || '',
+          fabricColor: fabric.color || '',
+          imageUrl: fabric.imageUrl || '',
+        },
+      });
+
+      await historyRepo.save(transaction);
+
+      return {
+        fabricSKU,
+        leftoverQuantity,
+        currentStock: currentQuantity,
+        deliveryMemoId: deliveryMemoId || null,
+        updatedDmItem,
+        updatedMemoTotal,
+        leftoverRecord,
+        transaction,
+      };
+    });
+  }
+
+  public async getFabricLeftoverReports(filters: {
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+  }): Promise<any> {
+    const queryBuilder = this.leftoverRepository.createQueryBuilder('leftover').orderBy('leftover.createdAt', 'DESC');
+
+    if (filters.startDate) {
+      queryBuilder.andWhere('leftover.createdAt >= :startDate', {
+        startDate: new Date(filters.startDate),
+      });
+    }
+
+    if (filters.endDate) {
+      const endDate = new Date(filters.endDate);
+      endDate.setHours(23, 59, 59, 999);
+      queryBuilder.andWhere('leftover.createdAt <= :endDate', { endDate });
+    }
+
+    if (filters.search && filters.search.trim() !== '') {
+      const searchTerm = filters.search.trim().toLowerCase();
+      queryBuilder.andWhere(
+        `(
+        LOWER(leftover.fabricSKU) LIKE :search OR
+        LOWER(leftover.notes) LIKE :search OR
+        LOWER(leftover.metadata->>'fabricTitle') LIKE :search OR
+        LOWER(leftover.metadata->>'fabricColor') LIKE :search
+      )`,
+        { search: `%${searchTerm}%` },
+      );
+    }
+
+    const records = await queryBuilder.getMany();
+
+    const memoIds = Array.from(new Set(records.map(r => r.deliveryMemoId).filter(Boolean))) as string[];
+    let memoMap: Record<string, string> = {};
+    if (memoIds.length > 0) {
+      const memoRepo = DBDataSource.getRepository(DeliveryMemoEntity);
+      const memos = await memoRepo.find({ where: memoIds.map(id => ({ _id: id })) });
+      memoMap = memos.reduce((acc, m) => {
+        acc[m._id] = m.dmNumber;
+        return acc;
+      }, {} as Record<string, string>);
+    }
+
+    const enrichedRecords = records.map(r => {
+      const dmName = (r.metadata as any)?.dmNumber || (r.deliveryMemoId ? memoMap[r.deliveryMemoId] : null) || null;
+      return {
+        ...r,
+        dmNumber: dmName,
+      };
+    });
+
+    const totalLeftover = enrichedRecords.reduce((sum, record) => sum + parseFloat(String(record.leftoverQuantity || 0)), 0);
+
+    return {
+      records: enrichedRecords,
+      summary: {
+        totalLeftover,
+        totalRecords: enrichedRecords.length,
+      },
+    };
+  }
+
+  public async getFabricLeftoverHistoryBySKU(fabricSKU: string): Promise<FabricLeftoverEntity[]> {
+    return this.leftoverRepository.find({
+      where: { fabricSKU },
+      order: { createdAt: 'DESC' },
+    });
   }
 }
 export default FabricService;
