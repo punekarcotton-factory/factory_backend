@@ -3,7 +3,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from 
 export interface FabricTransactionHistory {
   _id: string;
   fabricSKU: string;
-  transactionType: 'DEDUCT' | 'ADD' | 'INITIAL' | 'DAMAGE' | 'RETURN';
+  transactionType: 'DEDUCT' | 'ADD' | 'INITIAL' | 'DAMAGE' | 'RETURN' | 'LEFTOVER';
   quantityChanged: number;
   previousQuantity: number;
   newQuantity: number;
@@ -13,6 +13,7 @@ export interface FabricTransactionHistory {
   notes?: string;
   damageId?: string;
   returnId?: string;
+  leftoverId?: string;
   metadata?: Record<string, any>;
   createdAt: Date;
 }
@@ -27,7 +28,7 @@ export class FabricTransactionHistoryEntity {
   fabricSKU: string;
 
   @Column({ type: 'varchar', length: 50 })
-  transactionType: 'DEDUCT' | 'ADD' | 'INITIAL' | 'DAMAGE' | 'RETURN';
+  transactionType: 'DEDUCT' | 'ADD' | 'INITIAL' | 'DAMAGE' | 'RETURN' | 'LEFTOVER';
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   quantityChanged: number;
@@ -58,6 +59,10 @@ export class FabricTransactionHistoryEntity {
   @Column({ type: 'uuid', nullable: true })
   @Index()
   returnId: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  @Index()
+  leftoverId: string;
 
   @Column({ type: 'jsonb', nullable: true })
   metadata: Record<string, any>;

@@ -139,6 +139,60 @@ class FabricController {
     }
   };
 
+  public markFabricLeftover = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const fabricSKU = req.params.sku;
+      const { leftoverQuantity, deliveryMemoId, deliveryMemoItemId, notes, performedBy } = req.body;
+
+      if (!leftoverQuantity || leftoverQuantity <= 0) {
+        res.status(400).json({ message: 'Valid leftover quantity is required' });
+        return;
+      }
+
+      const result = await this.fabricService.markFabricLeftover({
+        fabricSKU,
+        leftoverQuantity: parseFloat(leftoverQuantity),
+        deliveryMemoId,
+        deliveryMemoItemId,
+        notes,
+        performedBy,
+      });
+
+      res.status(200).json({
+        data: result,
+        message: 'Leftover fabric recorded and restocked successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public getFabricLeftoverReports = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { startDate, endDate, search } = req.query;
+
+      const reports = await this.fabricService.getFabricLeftoverReports({
+        startDate: startDate as string,
+        endDate: endDate as string,
+        search: search as string,
+      });
+
+      res.status(200).json({ data: reports, message: 'fabric leftover reports retrieved' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public getFabricLeftoverHistory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const sku = req.params.sku;
+      const history = await this.fabricService.getFabricLeftoverHistoryBySKU(sku);
+      res.status(200).json({ data: history, message: 'fabric leftover history retrieved' });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   public getFabricTransactionHistory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const sku = req.params.sku;

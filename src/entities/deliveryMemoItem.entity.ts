@@ -51,6 +51,9 @@ export class DeliveryMemoItemEntity {
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   returnedQuantity: number;
 
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  leftoverQuantity: number;
+
   @Column({ type: 'text', nullable: true })
   notes: string;
 

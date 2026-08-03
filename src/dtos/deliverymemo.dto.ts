@@ -48,6 +48,11 @@ export class DeliveryMemoItemDto {
   @Type(() => Number)
   totalDhapFold?: number;
 
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  leftoverQuantity?: number;
+
   @IsString()
   @IsOptional()
   notes?: string;

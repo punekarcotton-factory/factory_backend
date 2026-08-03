@@ -4,6 +4,7 @@ import { DeliveryMemoItemDamageEntity } from '@/entities/DeliveryMemoItemDamage.
 import { DeliveryMemoStageHistoryEntity } from '@/entities/deliveryMemoStageHistory.entity';
 import { FabricEntity } from '@/entities/fabric.entity';
 import { FabricDamageEntity } from '@/entities/fabricDamage.entity';
+import { FabricLeftoverEntity } from '@/entities/fabricLeftover.entity';
 import { FabricShirtMappingEntity } from '@/entities/fabricShirtMapping.entity';
 import { FabricTransactionHistoryEntity } from '@/entities/fabricTransitionHistory';
 import { KanchButtonDetailsEntity } from '@/entities/KanchButtonDetails.entity';
@@ -36,6 +37,7 @@ export const DBDataSource = new DataSource({
     DeliveryMemoItemEntity,
     FabricTransactionHistoryEntity,
     FabricDamageEntity,
+    FabricLeftoverEntity,
     PreStitcherAssignmentEntity,
     PreStitchOptionsEntity,
     TailorDetailsEntity,
