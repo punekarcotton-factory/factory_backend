@@ -424,7 +424,13 @@ class DeliveryMemoService {
       }),
     );
 
-    await this.deliveryMemos.update({ _id: createMemoData._id }, { totalDhapFold: memoTotalDhapFold });
+    await this.deliveryMemos.update(
+      { _id: createMemoData._id },
+      {
+        totalDhapFold: memoTotalDhapFold,
+        fabricGiven: memoData.fabricGiven || memoTotalDhapFold,
+      },
+    );
 
     if (memoData.stage) {
       await this.stageHistoryService.createStageHistory({
@@ -1314,21 +1320,39 @@ class DeliveryMemoService {
     const pendingCount = memos.filter(m => (!m.jobWorkWorkerId || !m.jobWorkStatus || m.jobWorkStatus === 'PENDING') && m.status !== MemoStatus.CLOSED).length;
     const inProcessCount = memos.filter(m => m.jobWorkWorkerId && m.jobWorkStatus === 'IN_PROCESS' && m.status !== MemoStatus.CLOSED).length;
 
-    const totalFabricGiven = memos.reduce((sum, m) => sum + (Number(m.fabricGiven || m.totalDhapFold) || 0), 0);
+    const totalFabricGiven = memos.reduce((sum, m) => {
+      const memoMeters =
+        Number(m.totalDhapFold) ||
+        Number(m.fabricGiven) ||
+        (m.items ? m.items.reduce((s: number, i: any) => s + (Number(i.totalDhapFold) || 0), 0) : 0);
+      return sum + memoMeters;
+    }, 0);
 
-    const history = memos.map(m => ({
-      deliveryMemoId: m._id,
-      dmNumber: m.dmNumber,
-      workerName: m.jobWorkWorkerName || 'Unassigned',
-      workerId: m.jobWorkWorkerId || null,
-      fabricSKU: m.fabricSKU || m.items?.[0]?.fabricSKU || 'N/A',
-      fabricGiven: m.fabricGiven || m.totalDhapFold || 0,
-      jobWorkStatus: m.jobWorkStatus || 'PENDING',
-      memoStatus: m.status,
-      createdAt: m.createdAt,
-      closedAt: m.closedAt || null,
-      notes: m.notes || '',
-    }));
+    const history = memos.map(m => {
+      const skus =
+        m.items && m.items.length > 0
+          ? Array.from(new Set(m.items.map((i: any) => i.fabricSKU).filter(Boolean))).join(', ')
+          : m.fabricSKU || 'N/A';
+
+      const givenMeters =
+        Number(m.totalDhapFold) ||
+        Number(m.fabricGiven) ||
+        (m.items ? m.items.reduce((s: number, i: any) => s + (Number(i.totalDhapFold) || 0), 0) : 0);
+
+      return {
+        deliveryMemoId: m._id,
+        dmNumber: m.dmNumber,
+        workerName: m.jobWorkWorkerName || 'Unassigned',
+        workerId: m.jobWorkWorkerId || null,
+        fabricSKU: skus,
+        fabricGiven: Number(givenMeters.toFixed(2)),
+        jobWorkStatus: m.jobWorkStatus || 'PENDING',
+        memoStatus: m.status,
+        createdAt: m.createdAt,
+        closedAt: m.closedAt || null,
+        notes: m.notes || '',
+      };
+    });
 
     return {
       summary: {
